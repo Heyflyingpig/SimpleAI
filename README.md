@@ -28,7 +28,7 @@
 
 1.  **克隆项目**
     ```bash
-    git clone <your-repository-url>
+    git clone <https://github.com/Heyflyingpig/SimpleAI>
     cd SimpleAI
     ```
 
@@ -51,7 +51,7 @@
         "base_url": "your-api-base-url"
     }
     ```
-    - `model_name`: 你希望使用的模型名称，例如 `gpt-4` 或其他兼容模型。
+    - `model_name`: 你希望使用的模型名称
     - `api_key`: 你的API密钥。
     - `base_url`: API的访问地址。
 
