@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang = "zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SimpleAI</title>
+        <link rel = "stylesheet" href = "CSS/style.css">
+        <script src = "JS/script.js"></script>
+        <script src="JS/marked.min.js"></script>
+    </head> 
+    <body>
+        <div id = "main-area">
+           
+            <!-- <div id = "controls">
+                <button id = "pin">📌</button>
+            </div> -->
+
+            <h1>SimpleAI</h1>
+            <form id = "user-area">
+                <textarea  id = "input-txt" placeholder = "请输入问题..." rows = "5"></textarea>
+                <div id="user-actions">
+                    <button id = "change-prompt">提示词</button>
+                    <button id = "send-button">发送</button>
+                </div>
+            </form>
+            <div id = "ai-area">
+                <div class = "ai-response ai"><p>你好！有什么可以帮你的吗？</p></div>               
+            </div>
+                <button id = 'reset-button'>重置</button>      
+            </div>
+
+            <!-- 提示词部分 -->
+            <div id="prompt-area">
+                <div id="prompt-content">
+                    <div id="prompt-options">
+                        <div class="prompt-option" prompt-id="code-expert">代码专家</div>
+                        <div class="prompt-option" prompt-id="translate">翻译专家</div>
+                        <div class="prompt-option" prompt-id="paper-expert">论文专家</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </body>
+</html>

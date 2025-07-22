@@ -1,0 +1,11 @@
+# 密钥文件，非常重要，绝不能上传
+secrets.json
+
+# 数据库文件
+chat_history.db
+
+# Python 缓存和虚拟环境
+__pycache__/
+*.pyc
+venv/
+.venv/
