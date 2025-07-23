@@ -52,6 +52,7 @@ body{
 }
 
 #user-actions{
+    margin-top: 10px;
     display: flex;
     justify-content: space-between;
 }
@@ -155,6 +156,7 @@ body{
 }
 
 #prompt-options {
+
     display: flex;
     flex-direction: column;
     grid-template-columns: repeat(2, 1fr);
