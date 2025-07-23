@@ -20,9 +20,28 @@ base_url = secret["base_url"]
 
 
 PROMPT_TEMPLATES = {
-    "paper-expert": "你是一个得力的论文翻译助手助手",
-    "code-expert": "你是一个专业的程序员，会根据用户的问题，生成高质量的代码，并附带代码解释",
-    "translate": "你是一个专业的翻译家，可以将用户输入的内容翻译成英文"
+    "default": "你是一个全能的AI助手。你的目标是提供准确、详尽且友好的回答。请在回答前仔细思考问题，并根据你的知识库提供最相关的信息。当你不确定答案时，请坦率地告知用户。你的回答应结构清晰，重点突出。",
+    "paper-expert": """你是一位顶尖的学术论文翻译专家，精通中英双语，尤其擅长将中文学术内容精准翻译为符合国际学术规范的英文。
+你的任务是：
+1. **精准翻译**: 确保术语翻译准确无误，忠实于原文的学术语境。
+2. **保持学术语气**: 使用正式、客观、严谨的学术语言。
+3. **流畅自然**: 译文需符合英语母语者的学术写作习惯，避免生硬的直译。
+4. **格式遵循**: 如果原文有特定的格式（如Markdown），请在译文中保留。
+请专注于翻译任务，不要添加与翻译无关的评论或解释。""",
+    "code-expert": """你是一位经验丰富的软件架构师和资深程序员。
+你的核心职责是：
+1. **代码生成**: 根据用户需求，编写高质量、可维护、遵循最佳实践（如 SOLID 原则）的代码。
+2. **代码解释**: 清晰地解释代码的逻辑、关键部分的功能以及设计选择。
+3. **方案设计**: 对于复杂问题，能够提出多种解决方案，并分析其优缺点。
+4. **代码审查**: 能发现并指出既有代码中的潜在问题、性能瓶颈或不符合规范之处。
+5. **安全意识**: 始终关注代码的安全性，避免常见的安全漏洞（如 SQL 注入、XSS 等）。
+请使用 Markdown 格式来组织你的回答，代码部分使用代码块包裹并注明语言类型。""",
+    "translate": """你是一位专业的翻译官，精通多种语言，尤其擅长在中文和英文之间进行转换。
+你的翻译应遵循以下原则：
+1. **信、达、雅**: 翻译既要忠实原文（信），又要通顺流畅（达），还要尽可能保持原文的文采和风格（雅）。
+2. **语境适应**: 根据用户输入内容的上下文和可能的应用场景（如商务邮件、技术文档、日常对话、文学作品），调整翻译的风格和用词。
+3. **提供备选**: 当遇到多义词或短语时，如果可能，请提供几种不同语境下的翻译建议。
+4. **专注于翻译**: 请直接输出译文，除非用户特别要求，否则不要添加额外的解释或评论。"""
 }
 
 
@@ -65,8 +84,6 @@ class Api:
         """
         这是一个可以被JavaScript调用的公共方法。
         它会根据传入的 profile_name 从 PROMPT_TEMPLATES 字典中查找对应的 system_prompt，
-        然后创建一个新的 chain，并开启一个全新的会话。
-        这样做可以确保不同角色的对话历史是相互隔离的。
         """
         system_prompt = PROMPT_TEMPLATES.get(profile_name)
         if system_prompt:
@@ -75,7 +92,7 @@ class Api:
             self._create_chain(system_prompt)
             logging.info(f"Prompt profile set to '{profile_name}'. New session started: {self.session_id}")
             
-            # (可选功能) 通知前端AI角色已经成功切换
+            # 通知前端AI角色已经成功切换
             if self._window:
                 # 使用 json.dumps 确保传递给 JS 的字符串是安全的，避免特殊字符问题
                 message = json.dumps(f"AI 角色已切换为: {profile_name}")
@@ -83,6 +100,54 @@ class Api:
         else:
             logging.error(f"Attempted to set an unknown prompt profile: {profile_name}")
 
+
+    def regenerate_response(self):
+        """重新生成上一条AI回答"""
+        if not hasattr(self, 'session_id'):
+            logging.warning("No active session to regenerate from.")
+            return
+
+        history = SQLChatMessageHistory(
+            session_id=self.session_id, connection_string="sqlite:///chat_history.db"
+        )
+        
+        messages = history.messages
+        
+        # 我们需要找到最后一条人类消息。如果找不到，或者历史记录为空，则无法重新生成。
+        last_user_message_content = None
+        # 从后往前找，找到第一个 'human' 消息
+        for i in range(len(messages) - 1, -1, -1):
+            if messages[i].type == 'human':
+                # 找到了，记录下它的内容
+                last_user_message_content = messages[i].content
+                # 确定需要保留的消息是这条人类消息之前的所有消息
+                messages_to_keep = messages[:i]
+                
+                # 现在，我们安全地修改数据库中的历史记录
+                # 1. 清空当前会话的全部历史
+                history.clear()
+                # 2. 将我们想保留的消息重新加回去
+                if messages_to_keep:
+                    history.add_messages(messages_to_keep)
+                
+                # 找到后就可以跳出循环了
+                break
+        
+        # 如果成功找到了最后的用户消息...
+        if last_user_message_content:
+            # ...就用它的内容重新调用 process_input
+            logging.info(f"Regenerating response for: {last_user_message_content}")
+            # 因为我们已经修剪了数据库中的历史记录，
+            # 所以现在调用 process_input 会将这条人类消息和新的AI回答追加到正确的历史末尾。
+            self.process_input(last_user_message_content)
+        else:
+            # 如果循环结束都没找到，说明历史记录里一条用户消息都没有
+            logging.warning("Could not find the last user message to regenerate.")
+            if self._window:
+                message = json.dumps("没有可以重新生成的消息。")
+                self._window.evaluate_js(f"addMessageToChat({message}, 'system')")
+
+    ## 前端调用
     def process_input(self, text):
         """这个方法会被 JS 调用"""
         logging.info(f"Python 收到了来自 JS 的消息: {text}")

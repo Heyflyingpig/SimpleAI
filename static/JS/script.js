@@ -1,5 +1,6 @@
 window.addEventListener('load', () => {
     const form = document.getElementById('user-area');
+    const reset_button = document.getElementById('reset-button');
     const input_txt = document.getElementById('input-txt');
     const send_button = document.getElementById("send-button");
     // const pin_button = document.getElementById('pin');
@@ -38,6 +39,22 @@ window.addEventListener('load', () => {
             input_txt.value = '';
         }
     });
+    
+    reset_button.addEventListener('click', () => {
+        // 1. 找到最后一个 AI 的回答元素
+        const chatOutput = document.getElementById('ai-area');
+        // 我们选择最后一个同时拥有 'ai-response' 和 'ai' 类名的子元素
+        const lastAiMessage = chatOutput.querySelector('.ai-response.ai:last-child');
+
+        // 2. 如果找到了，就从界面上移除它，为新的回答腾出空间
+        if (lastAiMessage) {
+            lastAiMessage.remove();
+        }
+
+        // 3. 调用后端的 regenerate_response 方法
+        window.pywebview.api.regenerate_response();
+    });
+    
     change_prompt.addEventListener('click', () => {
         // 当我们显示 prompt_area 时，应该将其 display 设置为 'flex'，因为它现在是一个 flex 容器
         prompt_area.style.display = 'flex';
