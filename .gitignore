@@ -1,5 +1,6 @@
 # 密钥文件，非常重要，绝不能上传
 secrets.json
+项目规划.md
 
 # 数据库文件
 chat_history.db
