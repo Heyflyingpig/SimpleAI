@@ -6,6 +6,7 @@ window.addEventListener('load', () => {
     const change_prompt_button = document.getElementById('change-prompt');
     const prompt_area = document.getElementById('prompt-area');
     const close_prompt_modal_button = document.getElementById('close-prompt-modal');
+    const clear_screen_button = document.getElementById('clear-screen'); // 获取新按钮的引用
 
 
     // pin_button.addEventListener('click', () => {
@@ -75,6 +76,17 @@ window.addEventListener('load', () => {
             prompt_area.style.display = "none";
         }
     });
+
+    // 为清屏按钮添加点击事件监听器
+    if (clear_screen_button) {
+        clear_screen_button.addEventListener('click', () => {
+            const chatOutput = document.getElementById('ai-area');
+            // 移除所有子元素，即清空聊天记录
+            chatOutput.innerHTML = '';
+            // 重新添回初始的欢迎消息
+            addMessageToChat('你好！有什么可以帮你的吗？', 'ai');
+        });
+    }
 
     // 将原本在外部的 prompt 切换事件监听器移到这里
     const prompt_options_container = document.getElementById('prompt-options');

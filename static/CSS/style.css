@@ -55,7 +55,15 @@ body{
     margin-top: 10px;
     display: flex;
     justify-content: space-between;
+    align-items: center; /* 新增：垂直居中对齐，让按钮组和单个按钮更好看 */
 }
+
+/* 新增：为左侧按钮组添加样式 */
+.action-group {
+    display: flex;
+    gap: 10px; /* 让“提示词”和“清屏”按钮之间有间距 */
+}
+
 
 #user-actions button{
     border: none;
