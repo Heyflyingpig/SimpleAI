@@ -1,7 +1,7 @@
 <p align="right">
   <a href="./README_EN.md">English</a> | <b>简体中文</b>
 </p>
-# SimpleAI
+#SimpleAI
 
 
 **你是否在为遇到一些小问题又不想浪费调用次数而烦恼？你是否遇到一些简单的问题而不想打开网页而忧心？👉simpleAI来了~**
