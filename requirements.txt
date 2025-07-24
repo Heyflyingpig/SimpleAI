@@ -1,8 +1,8 @@
 langchain
 langchain-openai
 langchain-community
-pywebview 
+pywebview
 keyboard
-Pillow-11.3.0 
-pystray-0.19.5 
-six-1.17.0  
+Pillow
+pystray
+python-slugify
