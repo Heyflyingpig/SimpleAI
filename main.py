@@ -254,6 +254,14 @@ class Api:
             logging.info(f"LangChain 响应: {response.content}")
         except Exception as e:
             logging.error(f"LangChain 调用失败: {str(e)}")
+            if self._window:
+                # 构造一个用户友好的错误消息，并将其发送到前端
+                error_message = f"抱歉，AI 响应失败。\n请检查您的网络连接和 API 设置是否正确。如果您是首次使用本软件，请右键托盘的设置选项，进行配置。\n错误详情: {e}"
+                js_error_message = json.dumps(error_message)
+                try:
+                    self._window.evaluate_js(f"addMessageToChat({js_error_message}, 'system')")
+                except Exception as eval_e:
+                    logging.error(f"向前端发送错误消息失败: {eval_e}")
             return  # 提前返回，避免后续错误
         
         response_text = response.content
@@ -400,6 +408,11 @@ def post_start(w):
     # 窗口初始是可见的，所以我们在这里同步状态
     is_window_visible = True
     logging.info("Window object has been successfully assigned to the API.")
+
+    # 启动时检查 API Key，如果为空则自动打开设置窗口
+    if not api.settings.get("api_key"):
+        logging.warning("API key is missing. Opening settings window automatically.")
+        open_settings_window()
 
     # 启动快捷键监听线程
     listener_thread = threading.Thread(target=start_keyboard_listener, daemon=True)
