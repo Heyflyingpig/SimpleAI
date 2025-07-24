@@ -3,6 +3,10 @@ import logging
 import os
 import json
 import time
+import keyboard
+import threading
+from PIL import Image
+import pystray
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import SQLChatMessageHistory
@@ -177,18 +181,120 @@ class Api:
 
 
 api = Api()
+window = None
+# 我们用自己的变量来追踪窗口状态
+is_window_visible = False
+# 全局变量，用于持有托盘图标对象
+tray_icon = None
 
 
-def post_start(window):
+def quit_app():
+    """安全地退出整个应用程序。"""
+    logging.info("Quit command received. Shutting down.")
+    if tray_icon:
+        tray_icon.stop()
+    if window:
+        # 确保在主GUI线程中销毁窗口
+        window.destroy()
+    # 使用 os._exit(0) 来强制终止整个进程，包括所有后台线程
+    os._exit(0)
+
+
+def on_closing():
+    """当用户点击关闭按钮时，隐藏窗口而不是退出。"""
+    global is_window_visible
+    if window:
+        window.hide()
+        # 手动更新我们自己的状态变量
+        is_window_visible = False
+    # 返回 False 会取消默认的关闭事件，从而阻止应用退出
+    # 如果希望在某些情况下（例如从托盘菜单选择退出）能真正关闭，可以在这里加入判断逻辑
+    return False 
+
+def toggle_window():
+    """根据窗口当前状态，显示或隐藏窗口。"""
+    global is_window_visible
+    if not window:
+        return
+    
+    try:
+        # 使用我们自己的状态变量来判断
+        if not is_window_visible:
+            logging.info("Window state is 'hidden', showing it.")
+            window.show()
+            is_window_visible = True
+        else:
+            logging.info("Window state is 'visible', hiding it.")
+            window.hide()
+            is_window_visible = False
+    except Exception as e:
+        # 如果窗口已经被销毁，可能会抛出异常
+        logging.error(f"Error toggling window: {e}")
+
+def setup_tray():
+    """设置并运行系统托盘图标。"""
+    global tray_icon
+    try:
+        image_path = os.path.join(base_path, "static", "img", "icon.png")
+        image = Image.open(image_path)
+    except FileNotFoundError:
+        logging.error(f"Icon file not found at {image_path}. Please ensure it exists.")
+        return
+
+    # 定义菜单项
+    menu = (
+        pystray.MenuItem('显示/隐藏', toggle_window, default=True),
+        pystray.MenuItem('退出', quit_app),
+
+    )
+
+    # 创建托盘图标
+    tray_icon = pystray.Icon("SimpleAI", image, "SimpleAI", menu)
+    logging.info("System tray icon is running.")
+    # 这会阻塞，直到调用 icon.stop()
+    tray_icon.run()
+
+
+def start_keyboard_listener():
+    """启动全局快捷键监听。"""
+    # 设置你想要的快捷键，这里使用 Ctrl+Shift+A 作为例子
+    # 'a' 可以换成任何你想要的字母或按键
+    hotkey = "ctrl+shift+a"
+    keyboard.add_hotkey(hotkey, toggle_window)
+    logging.info(f"Hotkey '{hotkey}' registered. Waiting for hotkey presses...")
+    # 这会阻塞，直到程序退出，所以它需要在自己的线程中运行
+    keyboard.wait()
+
+
+def post_start(w):
     """
     该函数会在 webview.start() 之后，在独立的线程中执行
     这是把 window 对象安全地传递给 API 实例的最佳时机
     """
+    global window, is_window_visible
+    window = w
     api._window = window
+    # 窗口初始是可见的，所以我们在这里同步状态
+    is_window_visible = True
     logging.info("Window object has been successfully assigned to the API.")
 
+    # 启动快捷键监听线程
+    listener_thread = threading.Thread(target=start_keyboard_listener, daemon=True)
+    listener_thread.start()
+    logging.info("Keyboard listener thread started.")
+
+    # 启动系统托盘图标线程
+    tray_thread = threading.Thread(target=setup_tray, daemon=True)
+    tray_thread.start()
+    logging.info("System tray thread started.")
+
+
 def main_display():
-    window = webview.create_window("SimpleAI", "static/index.html", height=600,width=400, js_api = api)
+    global window
+    # 我们将创建的窗口实例直接赋值给全局变量
+    window = webview.create_window("SimpleAI", "static/index.html", height=600,width=400, js_api = api, on_top=True)
+    # 订阅 closing 事件。当用户尝试关闭窗口时，会调用 on_closing 函数
+    window.events.closing += on_closing
     logging.info("窗口创建成功")
     webview.start(post_start, window, debug=True)
 
