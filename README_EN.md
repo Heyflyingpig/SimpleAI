@@ -1,7 +1,8 @@
 <p align="right">
   <b>English</b> | <a href="./README.md">简体中文</a>
 </p>
-#SimpleAI
+
+# SimpleAI
 
 **Are you tired of wasting API calls on small questions? Do you find it cumbersome to open a browser for simple queries? 👉 SimpleAI is here to help!**
 
