@@ -130,6 +130,48 @@ body{
     align-self: flex-start; /* AI 消息靠左 */
 }
 
+/* --- 新增：专门处理代码块和预格式化文本的样式 --- */
+/*
+ * 为 <pre> 标签（通常包裹代码块）添加样式
+ * pre-wrap: 允许文本根据容器宽度自动换行，同时保留代码中的原始换行和空格。
+ * overflow-x: auto; 当某一行代码实在太长无法优雅换行时，为其自身添加一个水平滚动条，
+ *                  而不是让它撑破整个聊天气泡。
+*/
+.ai-response pre {
+    white-space: pre-wrap;
+    overflow-x: auto;
+    background-color: #2d2d2d; /* 为代码块添加一个深色背景，与聊天气泡区分开 */
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+/*
+ * 为 <code> 标签（行内代码或代码块内的代码）添加样式
+ * word-wrap: break-word; 强制长单词（比如一个很长的变量名或链接）在必要时断开换行。
+ * font-family: 指定一个等宽字体，让代码看起来更整洁、专业。
+*/
+.ai-response code {
+    word-wrap: break-word; 
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #e0e0e0; /* 为行内代码添加浅灰色背景 */
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #333; /* 行内代码使用深色字体以保证可读性 */
+}
+
+/*
+ * 对 <pre> 中的 <code> 进行微调，覆盖上面对行内代码的样式
+ * 因为代码块的背景已经很暗了，所以内部的 <code> 标签不需要额外的背景色和内边距。
+*/
+.ai-response pre code {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    color: #f8f8f2; /* 在深色背景上使用浅色字体 */
+}
+
+
 #prompt-area {
     display: none; /* 初始时隐藏 */
     position: fixed; /* 改为固定定位，以覆盖整个视口 */
