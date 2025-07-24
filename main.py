@@ -16,44 +16,32 @@ logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(levelname)s - %(m
 
 base_path = os.path.dirname(__file__)
 secret_path = os.path.join(base_path, "secrets.json")
-with open(secret_path, "r") as f:
-    secret = json.load(f)
-model_name = secret["model_name"]
-api_key = secret["api_key"]
-base_url = secret["base_url"]
+prompt_path = os.path.join(base_path, "prompts.json") # 新增 prompts.json 路径
 
-
-PROMPT_TEMPLATES = {
-    "default": "你是一个全能的AI助手。你的目标是提供准确、详尽且友好的回答。请在回答前仔细思考问题，并根据你的知识库提供最相关的信息。当你不确定答案时，请坦率地告知用户。你的回答应结构清晰，重点突出。",
-    "paper-expert": """你是一位顶尖的学术论文翻译专家，精通中英双语，尤其擅长将中文学术内容精准翻译为符合国际学术规范的英文。
-你的任务是：
-1. **精准翻译**: 确保术语翻译准确无误，忠实于原文的学术语境。
-2. **保持学术语气**: 使用正式、客观、严谨的学术语言。
-3. **流畅自然**: 译文需符合英语母语者的学术写作习惯，避免生硬的直译。
-4. **格式遵循**: 如果原文有特定的格式（如Markdown），请在译文中保留。
-请专注于翻译任务，不要添加与翻译无关的评论或解释。""",
-    "code-expert": """你是一位经验丰富的软件架构师和资深程序员。
-你的核心职责是：
-1. **代码生成**: 根据用户需求，编写高质量、可维护、遵循最佳实践（如 SOLID 原则）的代码。
-2. **代码解释**: 清晰地解释代码的逻辑、关键部分的功能以及设计选择。
-3. **方案设计**: 对于复杂问题，能够提出多种解决方案，并分析其优缺点。
-4. **代码审查**: 能发现并指出既有代码中的潜在问题、性能瓶颈或不符合规范之处。
-5. **安全意识**: 始终关注代码的安全性，避免常见的安全漏洞（如 SQL 注入、XSS 等）。
-请使用 Markdown 格式来组织你的回答，代码部分使用代码块包裹并注明语言类型。""",
-    "translate": """你是一位专业的翻译官，精通多种语言，尤其擅长在中文和英文之间进行转换。
-你的翻译应遵循以下原则：
-1. **信、达、雅**: 翻译既要忠实原文（信），又要通顺流畅（达），还要尽可能保持原文的文采和风格（雅）。
-2. **语境适应**: 根据用户输入内容的上下文和可能的应用场景（如商务邮件、技术文档、日常对话、文学作品），调整翻译的风格和用词。
-3. **提供备选**: 当遇到多义词或短语时，如果可能，请提供几种不同语境下的翻译建议。
-4. **专注于翻译**: 请直接输出译文，除非用户特别要求，否则不要添加额外的解释或评论。"""
-}
+# 检查配置文件是否存在，如果不存在则创建一个默认的
+if not os.path.exists(secret_path):
+    logging.warning("secrets.json not found, creating a default one.")
+    default_secrets = {
+        "model_name": "",
+        "api_key": "",
+        "base_url": "",
+        "hotkey": "ctrl+shift+a"
+    }
+    with open(secret_path, 'w', encoding='utf-8') as f:
+        json.dump(default_secrets, f, indent=4)
 
 
 class Api:
     def __init__(self):
         self._window = None
+        self.settings = self.get_settings()
+        self.prompts = self.get_prompts() # 加载所有提示词
         # 1. 初始化 LLM, 作为类的属性，方便复用
-        self.llm = ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
+        self.llm = ChatOpenAI(
+            model=self.settings.get("model_name"), 
+            api_key=self.settings.get("api_key"), 
+            base_url=self.settings.get("base_url")
+        )
         # 2. 使用默认的 prompt 初始化
         self.set_prompt_profile("default")
 
@@ -84,13 +72,114 @@ class Api:
             history_messages_key="history",
         )
 
+    def get_settings(self):
+        """从 secrets.json 加载设置并返回一个字典。"""
+        try:
+            with open(secret_path, "r", encoding='utf-8') as f:
+                settings = json.load(f)
+                logging.info(f"Settings loaded: {settings}")
+                return settings
+        except Exception as e:
+            logging.error(f"Could not load settings from {secret_path}: {e}")
+            return {} # 返回空字典以避免崩溃
+
+    def save_settings(self, settings_data):
+        """从前端接收一个字典并将其保存到 secrets.json。"""
+        try:
+            # 在保存前，确保所有必要的键都存在
+            current_settings = self.get_settings()
+            current_settings.update(settings_data)
+
+            with open(secret_path, "w", encoding='utf-8') as f:
+                json.dump(current_settings, f, indent=4)
+            logging.info(f"Settings saved: {current_settings}")
+            
+            # 保存后，重新加载 LLM 以应用新设置
+            self.settings = current_settings
+            self.llm = ChatOpenAI(
+                model=self.settings.get("model_name"),
+                api_key=self.settings.get("api_key"),
+                base_url=self.settings.get("base_url")
+            )
+            logging.info("LLM re-initialized with new settings.")
+        except Exception as e:
+            logging.error(f"Could not save settings to {secret_path}: {e}")
+    
+    def get_prompts(self):
+        """从 prompts.json 加载所有提示词。"""
+        try:
+            with open(prompt_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logging.error(f"Could not load prompts from {prompt_path}: {e}")
+            return {}
+
+    def save_prompt(self, prompt_id, name, prompt_text):
+        """新增或更新一个提示词并保存到文件。"""
+        try:
+            # 使用 slugify 创建一个对文件名和URL友好的ID
+            from slugify import slugify
+            if not prompt_id: # 如果是新增
+                prompt_id = slugify(name) if name else f"prompt-{int(time.time())}"
+            
+            self.prompts[prompt_id] = {"name": name, "prompt": prompt_text}
+            with open(prompt_path, 'w', encoding='utf-8') as f:
+                json.dump(self.prompts, f, indent=4, ensure_ascii=False)
+            
+            logging.info(f"Prompt '{prompt_id}' saved.")
+            return {"success": True, "prompts": self.prompts}
+        
+        except Exception as e:
+            
+            logging.error(f"Failed to save prompt '{prompt_id}': {e}")
+            return {"success": False, "error": str(e)}
+
+    def delete_prompt(self, prompt_id):
+        """删除一个提示词。"""
+        try:
+            if prompt_id in self.prompts and prompt_id != "default":
+                del self.prompts[prompt_id]
+                with open(prompt_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.prompts, f, indent=4, ensure_ascii=False)
+                logging.info(f"Prompt '{prompt_id}' deleted.")
+                return {"success": True, "prompts": self.prompts}
+            else:
+                logging.warning(f"Attempted to delete non-existent or default prompt '{prompt_id}'.")
+                return {"success": False, "error": "Cannot delete default or non-existent prompt."}
+        except Exception as e:
+            logging.error(f"Failed to delete prompt '{prompt_id}': {e}")
+            return {"success": False, "error": str(e)}
+
+    def change_hotkey(self, new_hotkey):
+        """动态更改并保存快捷键。"""
+        global hotkey
+        try:
+            logging.info(f"Attempting to change hotkey from '{hotkey}' to '{new_hotkey}'")
+            # 1. 移除旧的快捷键
+            keyboard.remove_hotkey(hotkey)
+            # 2. 添加新的快捷键
+            keyboard.add_hotkey(new_hotkey, toggle_window)
+            # 3. 更新全局变量
+            hotkey = new_hotkey
+            # 4. 更新并保存到配置文件
+            self.settings['hotkey'] = new_hotkey
+            self.save_settings(self.settings)
+            logging.info(f"Successfully changed hotkey to '{new_hotkey}'")
+        except Exception as e:
+            logging.error(f"Failed to change hotkey: {e}")
+            # 如果失败了，尝试恢复旧的快捷键
+            keyboard.add_hotkey(hotkey, toggle_window)
+
+    
     def set_prompt_profile(self, profile_name="default"):
         """
         这是一个可以被JavaScript调用的公共方法。
         它会根据传入的 profile_name 从 PROMPT_TEMPLATES 字典中查找对应的 system_prompt，
         """
-        system_prompt = PROMPT_TEMPLATES.get(profile_name)
-        if system_prompt:
+        # 现在从加载的 prompts 字典中获取
+        prompt_data = self.prompts.get(profile_name)
+        if prompt_data and 'prompt' in prompt_data:
+            system_prompt = prompt_data['prompt']
             # 当切换 prompt 时，我们创建一个新的会话ID，以开启一段全新的对话
             self.session_id = time.strftime("%Y%m%d%H%M%S", time.localtime())
             self._create_chain(system_prompt)
@@ -99,7 +188,7 @@ class Api:
             # 通知前端AI角色已经成功切换
             if self._window:
                 # 使用 json.dumps 确保传递给 JS 的字符串是安全的，避免特殊字符问题
-                message = json.dumps(f"AI 角色已切换为: {profile_name}")
+                message = json.dumps(f"AI 角色已切换为: {prompt_data.get('name', profile_name)}")
                 self._window.evaluate_js(f"addMessageToChat({message}, 'system')")
         else:
             logging.error(f"Attempted to set an unknown prompt profile: {profile_name}")
@@ -186,6 +275,34 @@ window = None
 is_window_visible = False
 # 全局变量，用于持有托盘图标对象
 tray_icon = None
+# 全局变量，用于持有设置窗口对象，确保只有一个实例
+settings_window = None
+# 全局快捷键变量，从配置文件加载
+hotkey = "ctrl+shift+a"  # 提供一个默认值
+
+def open_settings_window():
+    """创建并显示设置窗口，如果它不存在的话。"""
+    global settings_window
+    if settings_window is None:
+        # 创建一个全新的窗口实例，并传入 js_api
+        settings_window = webview.create_window(
+            "设置", 
+            "static/setting.html", 
+            width=850, 
+            height=600, 
+            resizable=False, 
+            js_api=api
+        )
+        # 监听关闭事件，以便我们可以重置变量，允许窗口被再次创建
+        def on_settings_close():
+            global settings_window
+            logging.info("Settings window closed.")
+            settings_window = None
+        
+        settings_window.events.closing += on_settings_close
+    else:
+        # 如果窗口已存在（可能只是被最小化了），则将其带到前台
+        settings_window.show()
 
 
 def quit_app():
@@ -244,8 +361,8 @@ def setup_tray():
     # 定义菜单项
     menu = (
         pystray.MenuItem('显示/隐藏', toggle_window, default=True),
-        pystray.MenuItem('退出', quit_app),
-
+        pystray.MenuItem('设置', open_settings_window),
+        pystray.MenuItem('退出', quit_app)
     )
 
     # 创建托盘图标
@@ -257,9 +374,15 @@ def setup_tray():
 
 def start_keyboard_listener():
     """启动全局快捷键监听。"""
-    # 设置你想要的快捷键，这里使用 Ctrl+Shift+A 作为例子
-    # 'a' 可以换成任何你想要的字母或按键
-    hotkey = "ctrl+shift+a"
+    global hotkey
+    # 从配置中读取快捷键
+    # 这确保了即使 change_hotkey 失败，重启后也能加载正确的快捷键
+    try:
+        settings = api.get_settings()
+        hotkey = settings.get('hotkey', 'ctrl+shift+a')
+    except Exception:
+        pass # 使用默认值
+
     keyboard.add_hotkey(hotkey, toggle_window)
     logging.info(f"Hotkey '{hotkey}' registered. Waiting for hotkey presses...")
     # 这会阻塞，直到程序退出，所以它需要在自己的线程中运行
@@ -293,6 +416,8 @@ def main_display():
     global window
     # 我们将创建的窗口实例直接赋值给全局变量
     window = webview.create_window("SimpleAI", "static/index.html", height=600,width=400, js_api = api, on_top=True)
+
+
     # 订阅 closing 事件。当用户尝试关闭窗口时，会调用 on_closing 函数
     window.events.closing += on_closing
     logging.info("窗口创建成功")

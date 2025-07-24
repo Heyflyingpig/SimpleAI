@@ -3,9 +3,9 @@ window.addEventListener('load', () => {
     const reset_button = document.getElementById('reset-button');
     const input_txt = document.getElementById('input-txt');
     const send_button = document.getElementById("send-button");
-    // const pin_button = document.getElementById('pin');
-    const change_prompt = document.getElementById('change-prompt');
+    const change_prompt_button = document.getElementById('change-prompt');
     const prompt_area = document.getElementById('prompt-area');
+    const close_prompt_modal_button = document.getElementById('close-prompt-modal');
 
 
     // pin_button.addEventListener('click', () => {
@@ -55,9 +55,15 @@ window.addEventListener('load', () => {
         window.pywebview.api.regenerate_response();
     });
     
-    change_prompt.addEventListener('click', () => {
-        // 当我们显示 prompt_area 时，应该将其 display 设置为 'flex'，因为它现在是一个 flex 容器
+    change_prompt_button.addEventListener('click', () => {
+        // 1. 先从后端获取并渲染最新的提示词列表
+        renderPromptOptions();
+        // 2. 然后再显示弹窗
         prompt_area.style.display = 'flex';
+    });
+
+    close_prompt_modal_button.addEventListener('click', () => {
+        prompt_area.style.display = 'none';
     });
 
 
@@ -80,15 +86,33 @@ function addMessageToChat(text, sender) {
     chatOutput.scrollTop = chatOutput.scrollHeight;
 }
 
-// 新增：当文档加载完成后，为 prompt-selector 添加事件监听器
-document.addEventListener('DOMContentLoaded', (event) => {
-    const prompt_options = document.getElementById('prompt-options');
-    if (prompt_options) {
-        prompt_options.addEventListener('click', (e) => {
+// 修改：不再监听 DOMContentLoaded，因为现在是动态加载
+const prompt_options_container = document.getElementById('prompt-options');
+if (prompt_options_container) {
+    prompt_options_container.addEventListener('click', (e) => {
+        // 确保点击的是一个 prompt-option 元素
+        if (e.target && e.target.classList.contains('prompt-option')) {
             const selected_prompt = e.target.getAttribute('prompt-id');
             // 调用 Python 后端的 set_prompt_profile 方法
             window.pywebview.api.set_prompt_profile(selected_prompt);
-        });
-    }
-});
+            // 选择后自动关闭弹窗
+            document.getElementById('prompt-area').style.display = 'none';
+        }
+    });
+}
+
+function renderPromptOptions() {
+    const container = document.getElementById('prompt-options');
+    container.innerHTML = ''; // 清空旧列表
+
+    window.pywebview.api.get_prompts().then(prompts => {
+        for (const id in prompts) {
+            const option = document.createElement('div');
+            option.className = 'prompt-option';
+            option.setAttribute('prompt-id', id);
+            option.textContent = prompts[id].name;
+            container.appendChild(option);
+        }
+    });
+}
 

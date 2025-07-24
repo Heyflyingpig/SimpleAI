@@ -179,6 +179,7 @@ body{
 }
 
 #close-prompt-modal {
+    margin-top: 20px;
     padding: 10px 20px;
     background-color: #6c757d;
     color: white;

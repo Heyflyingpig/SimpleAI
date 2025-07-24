@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置</title>
+    <link rel="stylesheet" href="CSS/setting.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <ul class="nav">
+                <li class="nav-item active" data-target="api-settings">API 设置</li>
+                <li class="nav-item" data-target="hotkey-settings">快捷键设置</li>
+                <li class="nav-item" data-target="prompt-settings">提示词设置</li>
+                <li class="nav-item" data-target="about-settings">关于</li>
+                
+            </ul>
+        </div>
+        <div class="content">
+            <div id="api-settings" class="page active">
+                <h2>API 设置</h2>
+                <div class="form-group">
+                    <label for="model-name">模型名称 (Model Name)</label>
+                    <input type="text" id="model-name" placeholder="例如: gpt-4, gpt-3.5-turbo">
+                </div>
+                <div class="form-group">
+                    <label for="api-key">API 密钥 (API Key)</label>
+                    <input type="password" id="api-key" placeholder="请输入您的 API Key">
+                </div>
+                <div class="form-group">
+                    <label for="base-url">API 地址 (Base URL)</label>
+                    <input type="text" id="base-url" placeholder="例如: https://api.openai.com/v1">
+                </div>
+                <button id="save-settings-btn">保存设置</button>
+                <p id="save-status"></p>
+            </div>
+            <!-- 未来可以添加更多设置页面 -->
+            <div id="hotkey-settings" class="page">
+                <h2>快捷键设置</h2>
+                <div class="form-group">
+                    <label for="hotkey-input">设置窗口快捷键</label>
+                    <input type="text" id="hotkey-input" readonly placeholder="点击这里并按下你想设置的快捷键组合">
+                    <small>支持的按键有: Ctrl, Shift, Alt, 和单个字母/数字键。例如: Ctrl+Shift+A</small>
+                 </div>
+                 <button id="save-hotkey-btn">保存快捷键</button>
+                 <p id="hotkey-save-status"></p>
+            </div>
+            <div id="prompt-settings" class="page">
+                <div class="prompt-container">
+                    <div class="prompt-list-section">
+                        <h2>提示词列表</h2>
+                        <ul id="prompt-list">
+                            <!-- JS 会在这里动态填充列表 -->
+                        </ul>
+                    </div>
+                    <div class="prompt-edit-section">
+                        <h2>添加/编辑提示词</h2>
+                        <input type="hidden" id="prompt-id">
+                        <div class="form-group">
+                            <label for="prompt-name">提示词名称</label>
+                            <input type="text" id="prompt-name" placeholder="例如：我的周报助手">
+                        </div>
+                        <div class="form-group">
+                            <label for="prompt-text">提示词内容</label>
+                            <textarea id="prompt-text" rows="10" placeholder="在此输入详细的提示词..."></textarea>
+                        </div>
+                        <div class="prompt-actions">
+                            <button id="save-prompt-btn">保存提示词</button>
+                            <button id="clear-prompt-form-btn" class="secondary">清空表单</button>
+                        </div>
+                    </div>
+                </div>
+             </div>
+            <div id="about-settings" class="page">
+                <h2>关于 SimpleAI</h2>
+                <p><strong>版本:</strong> 1.0.0</p>
+                <p><strong>作者:</strong> Heyflyingpig</p>
+                <p>一个轻量级的桌面AI助手，旨在提供随时随地的AI帮助。</p>
+                <p>项目地址：<a href="https://github.com/Heyflyingpig/SimpleAI" target="_blank">https://github.com/Heyflyingpig/SimpleAI</a></p>
+            </div>
+        </div>
+    </div>
+    <script src="JS/setting.js"></script>
+</body>
+</html> 

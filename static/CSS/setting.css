@@ -1,0 +1,193 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f7f7f7;
+    color: #333;
+    height: 100%;
+}
+
+.container {
+    display: flex;
+    height: 100%;
+}
+
+.sidebar {
+    width: 25%;
+    background-color: #ececec;
+    padding: 20px;
+    border-right: 1px solid #ddd;
+    box-sizing: border-box;
+}
+
+.nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-item {
+    padding: 12px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-item:hover {
+    background-color: #e0e0e0;
+}
+
+.nav-item.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.content {
+    flex-grow: 1;
+    padding: 20px 40px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.page {
+    display: none;
+}
+
+.page.active {
+    display: block;
+}
+
+h2 {
+    margin-top: 0;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    color: #007bff;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+#save-status {
+    margin-top: 15px;
+    font-weight: 500;
+}
+
+/* Prompt Settings Styles */
+.prompt-container {
+    display: flex;
+    gap: 40px;
+    height: 100%;
+}
+
+.prompt-list-section {
+    width: 40%;
+    border-right: 1px solid #ddd;
+    padding-right: 20px;
+    overflow-y: auto;
+}
+
+.prompt-edit-section {
+    flex-grow: 1;
+}
+
+#prompt-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.prompt-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.prompt-list-item:hover {
+    background-color: #f0f0f0;
+}
+
+.prompt-list-item.selected {
+    background-color: #d4eaff;
+}
+
+.prompt-list-item .delete-btn {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.prompt-list-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.prompt-list-item .delete-btn:hover {
+    background-color: #cc0000;
+}
+
+#prompt-text {
+    min-height: 150px;
+    min-width: 100%;
+    resize: vertical;
+}
+
+.prompt-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.prompt-actions .secondary {
+    background-color: #6c757d;
+}
+
+.prompt-actions .secondary:hover {
+    background-color: #5a6268;
+} 
