@@ -1,6 +1,7 @@
 import webview
 import logging
 import os
+import sys
 import json
 import time
 import keyboard
@@ -14,9 +15,22 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 
 logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
 
-base_path = os.path.dirname(__file__)
-secret_path = os.path.join(base_path, "secrets.json")
-prompt_path = os.path.join(base_path, "prompts.json") # 新增 prompts.json 路径
+# --- 关键改动：判断运行环境，并设置正确的路径 ---
+if getattr(sys, 'frozen', False):
+    # 如果是打包后的 .exe 文件
+    base_path = sys._MEIPASS
+    # 我们希望配置文件在 .exe 同级目录，所以路径指向上一层
+    app_path = os.path.dirname(sys.executable)
+else:
+    # 如果是直接运行 .py 脚本
+    base_path = os.path.abspath(".")
+    app_path = base_path
+
+secret_path = os.path.join(app_path, "secrets.json")
+prompt_path = os.path.join(app_path, "prompts.json")
+# 注意：图片资源路径依然使用 base_path，因为它被打包进了_MEIPASS
+icon_path = os.path.join(base_path, "static", "img", "icon.png")
+
 
 # 检查配置文件是否存在，如果不存在则创建一个默认的
 if not os.path.exists(secret_path):
@@ -34,21 +48,44 @@ if not os.path.exists(secret_path):
 class Api:
     def __init__(self):
         self._window = None
+        self.llm = None
+        self.chain_with_history = None
+        self.session_id = None
         self.settings = self.get_settings()
-        self.prompts = self.get_prompts() # 加载所有提示词
-        # 1. 初始化 LLM, 作为类的属性，方便复用
-        self.llm = ChatOpenAI(
-            model=self.settings.get("model_name"), 
-            api_key=self.settings.get("api_key"), 
-            base_url=self.settings.get("base_url")
-        )
-        # 2. 使用默认的 prompt 初始化
-        self.set_prompt_profile("default")
+        self.prompts = self.get_prompts()
+        self._try_initialize_llm() # 启动时首次尝试初始化
 
-    def _create_chain(self, system_prompt):
+    def _try_initialize_llm(self):
+        """
+        尝试用当前的设置初始化LLM和Chain。
+        如果失败（例如缺少API Key），则保持 self.llm 为 None，不崩溃。
+        """
+        api_key = self.settings.get("api_key")
+        if not api_key:
+            logging.warning("API key not found. LLM not initialized.")
+            return
+
+        try:
+            self.llm = ChatOpenAI(
+                model=self.settings.get("model_name"), 
+                api_key=api_key, 
+                base_url=self.settings.get("base_url")
+            )
+            # LLM成功初始化后，立即设置一个默认的chain
+            self.session_id = time.strftime("%Y%m%d%H%M%S", time.localtime())
+            default_prompt = self.prompts.get("default", {}).get("prompt", "You are a helpful assistant.")
+            self.chain_with_history = self._create_chain(default_prompt, self.llm)
+            logging.info(f"LLM and chain initialized successfully. New session started: {self.session_id}")
+        except Exception as e:
+            logging.error(f"Failed to initialize LLM. Please check API settings. Error: {e}")
+            self.llm = None
+            self.chain_with_history = None
+
+    def _create_chain(self, system_prompt, llm):
         """
         一个私有方法，用于根据提供的 system_prompt 创建一个完整的、带历史记录的 chain。
         将其独立出来，方便在切换 prompt 时重复调用。
+        现在它接收 llm 作为参数并返回一个新的 chain 实例，而不是修改 self.chain_with_history。
         """
         # 1. 基于传入的 system_prompt 创建 Prompt Template
         prompt = ChatPromptTemplate.from_messages(
@@ -60,10 +97,10 @@ class Api:
         )
         
         # 2. 创建基础的 Chain
-        chain = prompt | self.llm
+        chain = prompt | llm
         
-        # 3. 创建带历史记录的 Chain
-        self.chain_with_history = RunnableWithMessageHistory(
+        # 3. 创建并返回带历史记录的 Chain
+        return RunnableWithMessageHistory(
             chain,
             lambda session_id: SQLChatMessageHistory(
                 session_id=session_id, connection_string="sqlite:///chat_history.db"
@@ -96,11 +133,7 @@ class Api:
             
             # 保存后，重新加载 LLM 以应用新设置
             self.settings = current_settings
-            self.llm = ChatOpenAI(
-                model=self.settings.get("model_name"),
-                api_key=self.settings.get("api_key"),
-                base_url=self.settings.get("base_url")
-            )
+            self._try_initialize_llm() # 尝试用新设置重新初始化
             logging.info("LLM re-initialized with new settings.")
         except Exception as e:
             logging.error(f"Could not save settings to {secret_path}: {e}")
@@ -178,11 +211,19 @@ class Api:
         """
         # 现在从加载的 prompts 字典中获取
         prompt_data = self.prompts.get(profile_name)
+
+        if not self.llm or not self.chain_with_history:
+            logging.warning("Cannot set prompt profile because LLM/chain is not initialized.")
+            if self._window:
+                message = json.dumps("AI 功能尚未初始化，请在“设置”中提供有效的 API Key。")
+                self._window.evaluate_js(f"addMessageToChat({message}, 'system')")
+            return
+
         if prompt_data and 'prompt' in prompt_data:
             system_prompt = prompt_data['prompt']
             # 当切换 prompt 时，我们创建一个新的会话ID，以开启一段全新的对话
             self.session_id = time.strftime("%Y%m%d%H%M%S", time.localtime())
-            self._create_chain(system_prompt)
+            self.chain_with_history = self._create_chain(system_prompt, self.llm)
             logging.info(f"Prompt profile set to '{profile_name}'. New session started: {self.session_id}")
             
             # 通知前端AI角色已经成功切换
@@ -196,7 +237,7 @@ class Api:
 
     def regenerate_response(self):
         """重新生成上一条AI回答"""
-        if not hasattr(self, 'session_id'):
+        if not self.session_id:
             logging.warning("No active session to regenerate from.")
             return
 
@@ -245,6 +286,13 @@ class Api:
         """这个方法会被 JS 调用"""
         logging.info(f"Python 收到了来自 JS 的消息: {text}")
         
+        # 增加前置检查，如果chain未初始化，则提示用户
+        if not self.chain_with_history:
+            error_message = "AI功能尚未初始化，请在“设置”中配置有效的API Key。"
+            if self._window:
+                self._window.evaluate_js(f"addMessageToChat({json.dumps(error_message)}, 'system')")
+            return
+
         # 调用 LangChain 并传入 session_id
         try:
             response = self.chain_with_history.invoke(
@@ -299,7 +347,7 @@ def open_settings_window():
             width=850, 
             height=600, 
             resizable=False, 
-            js_api=api
+            js_api=api,
         )
         # 监听关闭事件，以便我们可以重置变量，允许窗口被再次创建
         def on_settings_close():
@@ -360,10 +408,9 @@ def setup_tray():
     """设置并运行系统托盘图标。"""
     global tray_icon
     try:
-        image_path = os.path.join(base_path, "static", "img", "icon.png")
-        image = Image.open(image_path)
+        image = Image.open(icon_path)
     except FileNotFoundError:
-        logging.error(f"Icon file not found at {image_path}. Please ensure it exists.")
+        logging.error(f"Icon file not found at {icon_path}. Please ensure it exists.")
         return
 
     # 定义菜单项
@@ -434,7 +481,7 @@ def main_display():
     # 订阅 closing 事件。当用户尝试关闭窗口时，会调用 on_closing 函数
     window.events.closing += on_closing
     logging.info("窗口创建成功")
-    webview.start(post_start, window, debug=True)
+    webview.start(post_start, window)
 
 if __name__ == "__main__":
     main_display()

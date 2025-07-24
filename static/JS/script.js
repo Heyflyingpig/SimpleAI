@@ -75,6 +75,21 @@ window.addEventListener('load', () => {
             prompt_area.style.display = "none";
         }
     });
+
+    // 将原本在外部的 prompt 切换事件监听器移到这里
+    const prompt_options_container = document.getElementById('prompt-options');
+    if (prompt_options_container) {
+        prompt_options_container.addEventListener('click', (e) => {
+            // 确保点击的是一个 prompt-option 元素
+            if (e.target && e.target.classList.contains('prompt-option')) {
+                const selected_prompt = e.target.getAttribute('prompt-id');
+                // 调用 Python 后端的 set_prompt_profile 方法
+                window.pywebview.api.set_prompt_profile(selected_prompt);
+                // 选择后自动关闭弹窗
+                document.getElementById('prompt-area').style.display = 'none';
+            }
+        });
+    }
 });
 
 function addMessageToChat(text, sender) {
@@ -84,21 +99,6 @@ function addMessageToChat(text, sender) {
     messageElement.innerHTML = marked.parse(text);
     chatOutput.appendChild(messageElement);
     chatOutput.scrollTop = chatOutput.scrollHeight;
-}
-
-// 修改：不再监听 DOMContentLoaded，因为现在是动态加载
-const prompt_options_container = document.getElementById('prompt-options');
-if (prompt_options_container) {
-    prompt_options_container.addEventListener('click', (e) => {
-        // 确保点击的是一个 prompt-option 元素
-        if (e.target && e.target.classList.contains('prompt-option')) {
-            const selected_prompt = e.target.getAttribute('prompt-id');
-            // 调用 Python 后端的 set_prompt_profile 方法
-            window.pywebview.api.set_prompt_profile(selected_prompt);
-            // 选择后自动关闭弹窗
-            document.getElementById('prompt-area').style.display = 'none';
-        }
-    });
 }
 
 function renderPromptOptions() {

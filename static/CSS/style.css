@@ -103,7 +103,10 @@ body{
 }
 
 .ai-response {
-    padding: 8px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    padding-left: 10px;
+    padding-right: 10px;
     border-radius: 18px;
     margin-bottom: 8px;
     max-width: 80%;
@@ -114,7 +117,6 @@ body{
     background-color: #007bff;
     color: white;
     align-self: flex-end; /* 用户消息靠右 */
-    margin-left: auto;
 }
 
 .ai-response.ai {
